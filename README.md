@@ -176,7 +176,7 @@ curl -I http://127.0.0.1/                      # 应断开（444 兜底生效）
 
 ## 三、常用运维命令
 
-项目自带 `Makefile`：
+项目自带 `Makefile`。`install.sh` 会顺带把 `make` 装上（精简版服务器镜像常常不带）；若仍缺失：`apt install -y make`（Debian/Ubuntu）或 `dnf install -y make`（RHEL/CentOS）。
 
 ```bash
 make setup     # 交互式向导：配置站点并启动
@@ -191,24 +191,44 @@ make test      # 校验 nginx 配置语法
 make update    # 更新到最新版本并重新部署
 ```
 
+**没装 `make` 时**，对应的原生写法：
+
+| 有 make | 等价原生写法 |
+| --- | --- |
+| `make setup` | `./setup.sh` |
+| `make list` | `./setup.sh --list` |
+| `make render` | `./setup.sh --render-only` |
+| `make up` | `docker compose up -d` |
+| `make down` | `docker compose down` |
+| `make restart` | `docker compose restart` |
+| `make test` | `docker compose exec -T api-proxy nginx -t` |
+| `make reload` | `docker compose exec -T api-proxy nginx -s reload` |
+| `make logs` | `docker compose logs -f --tail=100` |
+| `make ps` | `docker compose ps` |
+
 ### 更新到最新版本
+
+装了 `make`：
 
 ```bash
 cd /opt/api-proxy
 sudo make update
 ```
 
-`make update` 会自己判断目录来历，两种都支持：
-
-- **`git clone` 的目录** → `git pull` → 重新生成 → 重启 → 热重载
-- **`install.sh` 安装的目录**（没有 `.git`）→ 重新拉取项目文件（此时 `git pull` 会报错，所以别用它）
-
-也可以直接重跑安装器，效果一样：
+没装 `make` 就直接重跑安装器，效果一样：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/EmersonLopez2005/api-proxy/main/install.sh -o /tmp/ap.sh
 sudo bash /tmp/ap.sh --yes
 ```
+
+> 这里特意下载到 `/tmp` 再执行，而不是直接跑 `/opt/api-proxy/install.sh` ——
+> 安装器会覆盖目标目录里的文件，**包括它自己**。执行中的脚本被覆盖有读到错乱内容的风险。
+
+`make update` 会自己判断目录来历，两种都支持：
+
+- **`git clone` 的目录** → `git pull` → 重新生成 → 重启 → 热重载
+- **`install.sh` 安装的目录**（没有 `.git`）→ 重新拉取项目文件（此时 `git pull` 会报错，所以别用它）
 
 **你已有的配置不会被冲掉。** `sites.conf`、`settings.conf`、`.env` 都不在仓库里（已被 `.gitignore` 排除），更新只覆盖项目自身的文件（`setup.sh`、模板、`Makefile`、README 等）。
 

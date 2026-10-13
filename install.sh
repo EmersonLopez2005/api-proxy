@@ -61,6 +61,35 @@ fi
 log "Docker 就绪：$DC"
 
 # ---------------------------------------------------------------------------
+# 1.5 确保 make 可用
+#     README 里的 make render / test / reload / update 都基于 Makefile。
+#     很多精简版服务器镜像不带 make，这里顺手装上；装不上也不影响部署，
+#     只是 make 系列命令不可用（可改用 ./setup.sh + docker compose）。
+# ---------------------------------------------------------------------------
+if ! command -v make >/dev/null 2>&1; then
+    log "未检测到 make，尝试安装 ..."
+    if command -v apt-get >/dev/null 2>&1; then
+        { apt-get update -qq && apt-get install -y -qq make; } >/dev/null 2>&1 || true
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y -q make >/dev/null 2>&1 || true
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y -q make >/dev/null 2>&1 || true
+    elif command -v apk >/dev/null 2>&1; then
+        apk add --no-cache make >/dev/null 2>&1 || true
+    fi
+
+    if command -v make >/dev/null 2>&1; then
+        log "make 安装完成：$(make --version 2>/dev/null | head -n1)"
+    else
+        warn "make 安装失败（不影响部署，但 make 系列命令不可用）"
+        warn "可手动安装：apt install -y make   /   dnf install -y make"
+        warn "或改用原生命令：./setup.sh --render-only && docker compose up -d"
+    fi
+else
+    log "make 就绪：$(make --version 2>/dev/null | head -n1)"
+fi
+
+# ---------------------------------------------------------------------------
 # 2. 拉取项目文件
 #    只覆盖仓库里跟踪的文件；sites.conf / settings.conf / .env / nginx.conf
 #    这些本地状态文件不在压缩包里，因此更新时不会被冲掉。
