@@ -1,0 +1,22 @@
+# api-proxy 站点清单 —— 示例文件
+#
+# 用法：复制成 sites.conf 再改成你自己的域名，也可以直接跑向导：
+#     cp sites.conf.example sites.conf
+#     sudo ./setup.sh
+#
+# 注意：sites.conf 已被 .gitignore 排除，不会进入版本库；本示例文件才提交。
+#
+# 语法: <对外域名> <上游URL> [转发Host]    用空格或 Tab 分隔
+#       Host 留空时自动取上游 URL 的主机名
+#
+# ── 格式说明 ──────────────────────────────────────────────────────────
+# 字段 1  对外域名      用户访问的域名，必须已解析到本机，支持 *.example.com 通配
+# 字段 2  上游URL       http:// 或 https:// ，省略协议默认 https，结尾斜杠可有可无
+# 字段 3  转发 Host     可选。上游要求特定 Host 时填写，留空则用上游 URL 的主机名
+#
+# 每行一个站点，`#` 开头为注释。
+# ──────────────────────────────────────────────────────────────────────
+
+api.example.com              https://api.upstream-a.com
+api2.example.com             https://upstream-b.com
+cdn.example.com              https://origin.example.net   cdn.origin.example.net

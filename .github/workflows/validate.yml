@@ -1,0 +1,77 @@
+name: validate
+
+on:
+  push:
+    paths:
+      - 'templates/nginx.conf.tpl'
+      - 'setup.sh'
+      - 'sites.conf.example'
+      - 'nginx/nginx.conf.example'
+      - '.github/workflows/validate.yml'
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 语法检查（shell）
+        run: |
+          bash -n setup.sh
+          bash -n install.sh
+
+      - name: 从模板渲染示例配置
+        run: |
+          chmod +x setup.sh
+          SITES_FILE="$PWD/sites.conf.example" \
+            ./setup.sh --render-only --out /tmp/rendered.conf
+
+      - name: nginx -t（校验渲染结果）
+        run: |
+          docker run --rm \
+            -v /tmp/rendered.conf:/etc/nginx/nginx.conf:ro \
+            nginx:1.27-alpine nginx -t
+
+      - name: 示例文件是否与模板同步
+        run: |
+          strip() { grep -v '生成时间:' "$1" > "$2"; }
+          strip /tmp/rendered.conf /tmp/rendered.clean
+          strip nginx/nginx.conf.example /tmp/example.clean
+          if ! diff -u /tmp/example.clean /tmp/rendered.clean; then
+            echo "::error::nginx/nginx.conf.example 与模板渲染结果不一致。"
+            echo "::error::请在本地执行下面命令并提交："
+            echo "::error::  SITES_FILE=\$PWD/sites.conf.example ./setup.sh --render-only --out nginx/nginx.conf.example"
+            exit 1
+          fi
+          echo "示例文件与模板一致。"
+
+      - name: 确认本地状态文件没有被提交
+        run: |
+          fail=0
+          for f in sites.conf settings.conf nginx/nginx.conf .env; do
+            if git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+              echo "::error::$f 被提交了，它应当留在 .gitignore 中（含有私人域名）"
+              fail=1
+            fi
+          done
+          [ "$fail" = "0" ] && echo "本地状态文件均未被跟踪 ✓"
+          exit "$fail"
+
+      - name: 私人域名扫描（可选，需配置仓库 Secret）
+        env:
+          PRIVATE_DOMAINS: ${{ secrets.PRIVATE_DOMAINS }}
+        run: |
+          # 在仓库 Settings → Secrets and variables → Actions 里新建一个
+          # Secret 名为 PRIVATE_DOMAINS，值为你自己的域名正则，例如：
+          #     example\.com|my-upstream\.net
+          # 未配置时本步骤自动跳过，因此仓库里不会留存任何私人域名的痕迹。
+          if [ -z "${PRIVATE_DOMAINS:-}" ]; then
+            echo "未配置 PRIVATE_DOMAINS，跳过。"
+            exit 0
+          fi
+          if git grep -nEi "$PRIVATE_DOMAINS"; then
+            echo "::error::检测到私人域名被提交，请立即从版本库移除。"
+            exit 1
+          fi
+          echo "未发现私人域名 ✓"
