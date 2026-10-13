@@ -1,5 +1,10 @@
 .PHONY: help setup list render up down restart reload logs ps test update
 
+# 更新用的上游地址（fork 后请改成自己的）
+REPO ?= EmersonLopez2005/api-proxy
+BRANCH ?= main
+INSTALL_URL ?= https://raw.githubusercontent.com/$(REPO)/$(BRANCH)/install.sh
+
 help:
 	@echo "── 首次配置 ──────────────────────────────"
 	@echo "  make setup    交互式向导：配置站点并启动"
@@ -14,7 +19,8 @@ help:
 	@echo "  make logs     实时日志"
 	@echo "  make ps       容器状态"
 	@echo "  make test     仅校验 nginx 配置语法"
-	@echo "  make update   拉取最新代码并重建"
+	@echo "  make update   更新到最新版本并重新部署"
+	@echo "                （自动适配 git 目录 / install.sh 安装的目录）"
 
 setup:
 	./setup.sh
@@ -47,4 +53,17 @@ test:
 	docker compose exec -T api-proxy nginx -t
 
 update:
-	git pull --ff-only && ./setup.sh --render-only && docker compose up -d --force-recreate
+	@echo ">> 更新到最新版本"
+	@echo "   本地状态文件会保留：sites.conf / settings.conf / .env / nginx/nginx.conf"
+	@if [ -d .git ]; then \
+		echo ">> 检测到 git 仓库，使用 git pull"; \
+		git pull --ff-only && \
+		./setup.sh --render-only && \
+		docker compose up -d && \
+		( docker compose exec -T api-proxy nginx -s reload 2>/dev/null \
+			|| echo "   （容器未在运行，已跳过热重载）" ); \
+	else \
+		echo ">> 当前目录不是 git 仓库（由 install.sh 安装），改用官方安装器重新拉取"; \
+		curl -fsSL "$(INSTALL_URL)" -o /tmp/api-proxy-update.sh && \
+		DIR="$$(pwd)" bash /tmp/api-proxy-update.sh --yes; \
+	fi

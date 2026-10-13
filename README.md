@@ -188,8 +188,32 @@ make reload    # 不中断连接地热重载配置
 make logs      # 实时日志
 make ps        # 容器状态（含 health）
 make test      # 校验 nginx 配置语法
-make update    # 拉取最新代码 + 重新生成 + 重建
+make update    # 更新到最新版本并重新部署
 ```
+
+### 更新到最新版本
+
+```bash
+cd /opt/api-proxy
+sudo make update
+```
+
+`make update` 会自己判断目录来历，两种都支持：
+
+- **`git clone` 的目录** → `git pull` → 重新生成 → 重启 → 热重载
+- **`install.sh` 安装的目录**（没有 `.git`）→ 重新拉取项目文件（此时 `git pull` 会报错，所以别用它）
+
+也可以直接重跑安装器，效果一样：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/EmersonLopez2005/api-proxy/main/install.sh -o /tmp/ap.sh
+sudo bash /tmp/ap.sh --yes
+```
+
+**你已有的配置不会被冲掉。** `sites.conf`、`settings.conf`、`.env` 都不在仓库里（已被 `.gitignore` 排除），更新只覆盖项目自身的文件（`setup.sh`、模板、`Makefile`、README 等）。
+
+> 唯一的例外是 `nginx/nginx.conf` —— 它每次都会按 `sites.conf` + 模板重新生成。
+> 这正是它被设计成生成物的原因：**不要手改它**，要改就改上面那几个输入文件。
 
 **本机自检**（不必等 DNS 生效）：
 
