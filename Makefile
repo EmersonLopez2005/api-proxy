@@ -35,7 +35,7 @@ restart:
 	docker compose restart
 
 reload:
-	docker compose exec api-proxy nginx -s reload
+	docker compose exec -T api-proxy nginx -s reload
 
 logs:
 	docker compose logs -f --tail=100
@@ -44,7 +44,7 @@ ps:
 	docker compose ps
 
 test:
-	docker compose exec api-proxy nginx -t
+	docker compose exec -T api-proxy nginx -t
 
 update:
 	git pull --ff-only && ./setup.sh --render-only && docker compose up -d --force-recreate

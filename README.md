@@ -96,33 +96,54 @@ sudo ./setup.sh
 
 ## 二、添加 / 删除站点
 
-交互式：
+三种方式，任选一种。**都不需要手改 `nginx/nginx.conf`。**
+
+### 方式 1：交互向导（保留现有站点，纯追加）
 
 ```bash
-sudo ./setup.sh          # 重新跑向导，可继续追加，也可选择清空重配
+sudo ./setup.sh
 ```
 
-命令行（适合脚本化、批量）：
+向导会先列出当前所有站点，再问一句：
+
+```
+当前已配置 2 个站点：
+  1) api.example.com      -> https://api.upstream.com
+  2) api1.example.com     -> https://api.other.com
+
+  是否清空现有站点、从头重新配置？ [y/N]:
+```
+
+**直接回车＝不清空**，接下来的输入都是往现有列表里追加。只有想推倒重来才输 `y`。
+添加循环里「对外域名」留空回车即结束。
+
+### 方式 2：命令行（推荐，一条命令搞定）
 
 ```bash
 sudo ./setup.sh --add api2.example.com https://api.other.com      # 追加并部署
-sudo ./setup.sh --add cdn.example.com https://origin.net origin.example.net   # 指定 Host
+sudo ./setup.sh --add cdn.example.com https://origin.net cdn.origin.net   # 指定转发 Host
 sudo ./setup.sh --remove api2.example.com                          # 删除
 sudo ./setup.sh --list                                             # 看现有站点
 sudo ./setup.sh --render-only                                      # 只重新生成配置文件
-sudo ./setup.sh --help                                             # 完整帮助
+sudo ./setup.sh --yes                                              # 按现有 sites.conf 重新生成并部署
 ```
 
-`--add` / `--remove` 也可以一次给多个：
+`--add` 是**覆盖式追加**：域名不存在就新增，已存在就更新它的上游。可一次给多个：
 
 ```bash
 sudo ./setup.sh \
   --add a.example.com https://up-a.com \
   --add b.example.com https://up-b.com \
-  --remove old.example.com --yes
+  --remove old.example.com
 ```
 
-### 手动编辑 `sites.conf`
+跑完会依次做：写 `sites.conf` → 生成 `nginx.conf` → `nginx -t` 校验 → `up -d` → **热重载**，全自动。
+
+> 容器本来就在运行时，`docker compose up -d` 只会打印 `Running` 而不会重建（compose 层面的定义没变），
+> nginx 也不会自己去重读挂载的配置文件。所以脚本会额外做一次 `nginx -s reload`，否则会出现
+> 「配置是新的、站点却不生效」。手动操作时同理 —— 记得 `make reload`。
+
+### 方式 3：直接编辑 `sites.conf`
 
 ```conf
 # <对外域名> <上游URL> [转发Host]
@@ -130,7 +151,26 @@ api.example.com     https://api.upstream.com
 cdn.example.com     https://origin.example.net   cdn.origin.example.net
 ```
 
-改完执行 `make render && make test && make reload` 生效。
+改完执行：
+
+```bash
+make render && make test && make reload
+```
+
+### ⚠️ 新增站点后，别忘了这两件事
+
+| 事项 | 说明 |
+| --- | --- |
+| **DNS 加 A 记录** | 新域名指向本机 IP。前面挂了 Cloudflare 就加在 CF 里 |
+| **CF SSL 模式设 Flexible** | 本项目默认只监听 80。橙云下若设成 `Full` / `Full (strict)`，CF 会用 443 回源 → 521/525 报错 |
+| **防火墙放行** | 云安全组 / ufw / firewalld 放行对应端口 |
+
+加完 DNS 前后都可以自检，不必等解析生效：
+
+```bash
+curl -I http://127.0.0.1/ -H 'Host: 新域名'    # 应返回上游的响应头
+curl -I http://127.0.0.1/                      # 应断开（444 兜底生效）
+```
 
 ---
 

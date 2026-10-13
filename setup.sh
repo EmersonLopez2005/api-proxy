@@ -421,8 +421,29 @@ validate_conf() {
 }
 
 deploy() {
-    local dc; dc=$(compose_cmd)
+    local dc was_running=""
+    dc=$(compose_cmd)
+
+    # 先判断容器是否已经在跑。这一步很关键：
+    # 容器已在运行时，`docker compose up -d` 会因为 compose 层面的定义
+    # （镜像/端口/挂载声明）没变而完全不动它，nginx 也不会去重读挂载进去的
+    # nginx.conf —— 结果就是「配置生成成功、新站点却不生效」。
+    # 所以已在运行的情况下，必须显式热重载。
+    if ( cd "$DIR" && $dc ps -q api-proxy 2>/dev/null ) | grep -q .; then
+        was_running=1
+    fi
+
     ( cd "$DIR" && $dc up -d )
+
+    if [ -n "$was_running" ]; then
+        # -T 关掉伪终端分配，保证在没有 tty 的环境（如 curl|bash、CI）里也能跑
+        if ( cd "$DIR" && $dc exec -T api-proxy nginx -s reload ); then
+            log "已热重载 nginx，新配置立即生效"
+        else
+            warn "热重载失败，请手动执行: make reload"
+        fi
+    fi
+
     printf '\n' >&2
     ( cd "$DIR" && $dc ps ) >&2
 }
