@@ -53,7 +53,11 @@ dim()  { printf '%s%s%s\n' "$C_DIM" "$*" "$C_END" >&2; }
 # ---------------------------------------------------------------------------
 # 终端交互（关键：兼容 `curl | bash`，此时 stdin 是管道，必须读 /dev/tty）
 # ---------------------------------------------------------------------------
-tty_ok() { { [ -r /dev/tty ] && [ -w /dev/tty ]; } 2>/dev/null; }
+tty_ok() {
+    # APX_NO_TTY=1 时强制走 stdin，便于自动化测试或在无 tty 的 SSH 里跑
+    if [ "${APX_NO_TTY:-0}" = "1" ]; then return 1; fi
+    { [ -r /dev/tty ] && [ -w /dev/tty ]; } 2>/dev/null
+}
 
 read_input() {
     local __r=""
@@ -427,7 +431,7 @@ deploy() {
 # 交互式向导
 # ---------------------------------------------------------------------------
 wizard() {
-    if ! tty_ok && [ ! -t 0 ]; then
+    if [ "${APX_NO_TTY:-0}" != "1" ] && ! tty_ok && [ ! -t 0 ]; then
         die "当前环境没有可交互的终端。请改用参数模式，例如:
     sudo ./setup.sh --add api.example.com https://up.api.com --yes"
     fi
@@ -571,6 +575,8 @@ api-proxy 配置向导 / 配置生成器
     DIR=<路径>              项目目录（默认取脚本所在目录）
     SITES_FILE=<路径>       站点清单（默认 $DIR/sites.conf）
     SETTINGS_FILE=<路径>    全局设置（默认 $DIR/settings.conf）
+    APX_NO_TTY=1            强制从 stdin 读输入，不读 /dev/tty
+                            （用于自动化测试，或在没有终端的 SSH 会话里跑向导）
 USAGE
     exit 0
 }
