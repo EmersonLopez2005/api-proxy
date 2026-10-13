@@ -40,6 +40,20 @@ if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# 0.5 压制一切交互式提问，保证脚本能无人值守跑完
+#
+#   Ubuntu/Debian 在 apt 装完包后会跑 needrestart，弹出
+#   「Daemons using outdated libraries / Which services should be restarted?」。
+#   它有两个害处：
+#     1. 没有终端时会永久卡死在这个框上（CI、curl | bash）
+#     2. 候选列表里通常包含 docker.service，误选会重启 docker，
+#        连带重启所有容器（含正在对外服务的 api-proxy）
+#   放在最早的时间点，覆盖后面所有 apt 调用 —— 装 Docker
+#   （get.docker.com 内部也走 apt）和装 make 都受它保护。
+# ---------------------------------------------------------------------------
+export NEEDRESTART_SUSPEND=1 DEBIAN_FRONTEND=noninteractive
+
+# ---------------------------------------------------------------------------
 # 1. 确保 Docker / Compose 可用
 # ---------------------------------------------------------------------------
 if ! command -v docker >/dev/null 2>&1; then
@@ -68,16 +82,7 @@ log "Docker 就绪：$DC"
 # ---------------------------------------------------------------------------
 if ! command -v make >/dev/null 2>&1; then
     log "未检测到 make，尝试安装 ..."
-
-    # NEEDRESTART_SUSPEND=1
-    #   Ubuntu/Debian 装完库后，needrestart 会弹一个「Daemons using outdated
-    #   libraries / Which services should be restarted?」的交互框。它一旦出现，
-    #   无人值守的安装就会卡死；而且候选列表里通常包含 docker.service，
-    #   误选会导致所有容器被重启。这里直接抑制掉。
-    # DEBIAN_FRONTEND=noninteractive
-    #   一并压掉 debconf 的其它交互提问。
-    export NEEDRESTART_SUSPEND=1 DEBIAN_FRONTEND=noninteractive
-
+    # 交互式提问已在 §0.5 全局压制（NEEDRESTART_SUSPEND / DEBIAN_FRONTEND）
     if command -v apt-get >/dev/null 2>&1; then
         { apt-get update -qq && apt-get install -y -qq make; } >/dev/null 2>&1 || true
     elif command -v dnf >/dev/null 2>&1; then
