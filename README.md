@@ -2,7 +2,7 @@
 
 一个极简的 **nginx 反向代理** Docker 项目：把若干自有域名转发到指定的上游 API 站点，并在转发时清空所有会暴露真实访客身份的请求头。
 
-**不写死任何域名** —— 仓库里只有模板和向导，你的域名清单存在本地、不进版本库。clone 下来跑一遍向导就能用。
+
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/EmersonLopez2005/api-proxy/main/install.sh -o /tmp/api-proxy.sh
