@@ -17,13 +17,13 @@ sudo bash /tmp/api-proxy.sh
 api-proxy/
 ├── setup.sh                       ★ 交互式配置向导 / 配置生成器
 ├── install.sh                       一键引导：装 Docker → 拉文件 → 进向导
-├── templates/nginx.conf.tpl         配置模板（只有占位符，被提交）
-├── nginx/nginx.conf                 生成产物（已被 gitignore）
-├── nginx/nginx.conf.example         示例产物（被提交，供参考）
-├── sites.conf                       你的域名清单（已被 gitignore）
-├── sites.conf.example               清单格式示例（被提交）
-├── settings.conf                    全局设置，如出口 UA（已被 gitignore）
-├── .env                             HTTP_PORT 等（已被 gitignore）
+├── templates/nginx.conf.tpl         配置模板
+├── nginx/nginx.conf                 生成产物
+├── nginx/nginx.conf.example         示例产物
+├── sites.conf                       你的域名清单
+├── sites.conf.example               清单格式示例
+├── settings.conf                    全局设置，如出口 UA
+├── .env                             HTTP_PORT 等
 ├── .env.example
 ├── docker-compose.yml
 ├── Makefile
