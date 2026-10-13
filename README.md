@@ -308,6 +308,7 @@ ss -lntp | grep -E ':(80|443)\s'        # 有没有别的服务占着端口
 | `bind: address already in use` | 系统 nginx / apache / caddy 占着端口，停掉它们，或在向导里改 `HTTP_PORT` |
 | 流式输出（SSE）卡顿或被截断 | 确认 `proxy_buffering off`、`chunked_transfer_encoding on`、`proxy_http_version 1.1` 都在 |
 | 改了配置不生效 | 忘了 `make render` / `make reload`；用 `make test` 看容器内的实际配置 |
+| 卡在 `Daemons using outdated libraries` 交互框 | 这是 Ubuntu/Debian 的 `needrestart` 弹窗。选 **`<Cancel>`**，**尤其不要勾 `docker.service`** —— 那会重启 docker，所有容器跟着中断。`install.sh` 已自动抑制该弹窗 |
 | 上游走 CDN、偶尔解析到旧 IP | 打开 `templates/nginx.conf.tpl` 里 `resolver` 两行并重新 render |
 
 ---

@@ -68,6 +68,16 @@ log "Docker 就绪：$DC"
 # ---------------------------------------------------------------------------
 if ! command -v make >/dev/null 2>&1; then
     log "未检测到 make，尝试安装 ..."
+
+    # NEEDRESTART_SUSPEND=1
+    #   Ubuntu/Debian 装完库后，needrestart 会弹一个「Daemons using outdated
+    #   libraries / Which services should be restarted?」的交互框。它一旦出现，
+    #   无人值守的安装就会卡死；而且候选列表里通常包含 docker.service，
+    #   误选会导致所有容器被重启。这里直接抑制掉。
+    # DEBIAN_FRONTEND=noninteractive
+    #   一并压掉 debconf 的其它交互提问。
+    export NEEDRESTART_SUSPEND=1 DEBIAN_FRONTEND=noninteractive
+
     if command -v apt-get >/dev/null 2>&1; then
         { apt-get update -qq && apt-get install -y -qq make; } >/dev/null 2>&1 || true
     elif command -v dnf >/dev/null 2>&1; then
